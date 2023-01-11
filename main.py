@@ -1,85 +1,25 @@
-import sys
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
-from PyQt5.QtWebEngineWidgets import *
+from flask import Flask, request, send_file
+import qrcode
+from io import BytesIO
 
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super(MainWindow, self).__init__()
+app = Flask(__name__)
 
-        # create a QTabWidget
-        self.tabs = QTabWidget()
-        self.setCentralWidget(self.tabs)
-        self.showMaximized()
+@app.route('/')
+def generate_qr():
+    ssid = "Get Your Own Wifi"
+    password = "ItIsMyWifi69"
 
-        self.home_url = "https://you.com/"
+    wifi_data = 'WIFI:S:{};T:WPA;P:{};;'.format(ssid, password)
 
-        # Create a new tab and set it as the current tab
-        self.add_new_tab(self.home_url, "Home")
+    qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=5)
+    qr.add_data(wifi_data)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
 
-        # create a navigation toolbar
-        navbar = QToolBar()
-        self.addToolBar(navbar)
+    byteIO = BytesIO()
+    img.save(byteIO, 'PNG')
+    byteIO.seek(0)
+    return send_file(byteIO, mimetype='image/png')
 
-        back_btn = QAction(QIcon('back.svg'),'', self)
-        back_btn.triggered.connect(self.tabs.currentWidget().back)
-        navbar.addAction(back_btn)
-
-        forward_btn = QAction(QIcon('forward.svg'),'', self)
-        forward_btn.triggered.connect(self.tabs.currentWidget().forward)
-        navbar.addAction(forward_btn)
-
-        reload_btn = QAction(QIcon('reload.svg'),'', self)
-        reload_btn.triggered.connect(self.tabs.currentWidget().reload)
-        navbar.addAction(reload_btn)
-
-        home_btn = QAction(QIcon('home.svg'),'', self)
-        home_btn.triggered.connect(self.navigate_home)
-        navbar.addAction(home_btn)
-
-        new_tab_btn = QAction(QIcon('add.svg'),'', self)
-        new_tab_btn.triggered.connect(self.add_new_tab)
-        navbar.addAction(new_tab_btn)
-
-        # create a search bar
-        self.search_bar = QLineEdit()
-        self.search_bar.returnPressed.connect(self.search)
-        navbar.addWidget(self.search_bar)
-
-
-    def add_new_tab(self, url=None, title="blank"):
-        browser = QWebEngineView()
-
-        # set url if given
-        if url:
-            browser.setUrl(QUrl(url))
-
-        # create a new tab and set browser as its widget
-        tab_index = self.tabs.addTab(browser, title)
-
-        # make the new tab the current tab
-        self.tabs.setCurrentIndex(tab_index)
-
-        # update the url bar
-        browser.urlChanged.connect(self.update_url)
-    
-    def search(self):
-        url = self.search_bar.text()
-        current_tab = self.tabs.currentWidget()
-        current_tab.setUrl(QUrl(f"https://google.com/search?q={url}"))
-
-    def navigate_home(self):
-        self.tabs.currentWidget().setUrl(QUrl(self.home_url))
-
-    def update_url(self, q):
-        self.search_bar.setText(q.toString())
-
-    
-
-
-app = QApplication(sys.argv)
-QApplication.setApplicationName('My Cool Browser')
-window = MainWindow()
-app.exec_()
-
+if __name__ == '__main__':
+    app.run(port=5000,debug=True)
